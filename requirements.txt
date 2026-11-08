@@ -1,0 +1,9 @@
+fastapi==0.162.0
+starlette==1.10.0
+uvicorn==0.24.0
+httpx==0.28.1
+httpx2==2.16.0
+google-genai==2.34.0
+python-dotenv==1.0.1
+openai==3.42.0
+pytest==9.0.2
