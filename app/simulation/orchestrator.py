@@ -67,8 +67,7 @@ class ConversationOrchestrator:
                     return
 
             except Exception as e:
-                self.runner.fail_simulation()
-                print(f"Simulation failed: {e}")
+                self.runner.fail_simulation(error=e)
                 return
 
         self.runner.complete_simulation(reason="MAX_TURNS")

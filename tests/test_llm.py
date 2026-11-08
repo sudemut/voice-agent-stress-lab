@@ -26,9 +26,12 @@ def test_openai_client_inheritance(openai_client,client):
 
 def test_openai_client_generate(openai_client):
     mock_client = MagicMock()
-    mock_client.responses.create.assert_called_once_with = "Hello from mock!"
+    mock_client.responses.create.return_value.output_text = "Hello from mock!"
     openai_client.client=mock_client
     assert openai_client.generate("a","b")=="Hello from mock!"
+    mock_client.responses.create.assert_called_once_with(
+        model="gpt-4o-mini", instructions="a", input="b"
+    )
 
 def test_base_client_not_implemented(client):
     with pytest.raises(NotImplementedError):

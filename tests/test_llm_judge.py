@@ -60,9 +60,19 @@ def test_llm_judge_success():
     
     assert ev_result.reasoning=="The agent understood the request and responded appropriately."
     assert isinstance(ev_result, EvaluationResult)
-    assert ev_result.task_success == "NOT_VERIFIED"
+    assert not hasattr(ev_result, "task_success")
     assert ev_result.scenario_id == 1
     mock_gemini.generate_evaluation.assert_called_once()
+
+def test_prompt_tells_judge_not_to_decide_task_success():
+    scenario = TestScenario(1, "order cancellation", "cancel an order", {}, "Order cancelled", 5)
+    prompt = LLMJudge(MagicMock()).build_prompt(
+        scenario,
+        [{"role": "agent", "content": "Hello"}]
+    )
+    assert "decided separately by deterministic checks" in prompt
+    assert "Score only how the agent communicated" in prompt
+
 
 def test_invalid_response():
     our_testsc= TestScenario(1,"order cancellation","cancel an order",{},"Order cancelled",5)

@@ -2,6 +2,16 @@
 import httpx
 from google.genai import types
 
+from app.tools.order_api_client import OrderAPIError
+
+
+class ToolStepLimitExceeded(RuntimeError):
+    """The agent kept requesting tools past max_tool_steps.
+
+    This is agent behaviour (a tool loop), not an infrastructure failure,
+    so the verifier counts it as FAIL rather than ERROR.
+    """
+
 
 class ToolCallingService:
     def __init__(
@@ -53,7 +63,7 @@ class ToolCallingService:
                 }
 
             if step >= self.max_tool_steps:
-                raise RuntimeError(
+                raise ToolStepLimitExceeded(
                     f"Maximum tool steps exceeded: "
                     f"{self.max_tool_steps}"
                 )
@@ -79,11 +89,11 @@ class ToolCallingService:
                     "result": tool_result
                 }
 
-            except httpx.HTTPStatusError as error:
+            except OrderAPIError as error:
                 tool_response = {
                     "success": False,
                     "error": str(error),
-                    "status_code": error.response.status_code
+                    "status_code": error.status_code
                 }
 
             except (

@@ -1,6 +1,11 @@
 
 class EvaluationResult:
-    VALID_TASK_STATUSES = {"SUCCESS", "FAILURE", "NOT_VERIFIED"}
+    """Conversation-quality scores from the LLM judge.
+
+    Deliberately has no task-success field: whether the task succeeded is
+    decided by ScenarioVerifier from tool and backend evidence.
+    """
+
     REQUIRED_METRICS = {
         "relevance",
         "coherence",
@@ -11,21 +16,12 @@ class EvaluationResult:
     def __init__(
         self,
         scenario_id,
-        task_success,
         quality_scores=None,
         reasoning="",
         evidence=None,
         failure_reasons=None
     ):
         self.scenario_id = scenario_id
-
-        # Validate task success
-        if task_success not in self.VALID_TASK_STATUSES:
-            raise ValueError(
-                "task_success must be SUCCESS, FAILURE or NOT_VERIFIED"
-            )
-
-        self.task_success = task_success
 
         # Validate quality scores
         if quality_scores is None:
@@ -81,7 +77,6 @@ class EvaluationResult:
     def to_dict(self):
         return {
             "scenario_id": self.scenario_id,
-            "task_success": self.task_success,
             "quality_scores": self.quality_scores.copy(),
             "reasoning": self.reasoning,
             "evidence": self.evidence.copy(),

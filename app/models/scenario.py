@@ -1,4 +1,6 @@
 class TestScenario:
+    __test__ = False  # not a pytest test class despite the name
+
     def __init__(self,scenario_id,name,goal,customer_info,expected_outcome,max_turns):
         self.scenario_id=scenario_id
         self.name=name

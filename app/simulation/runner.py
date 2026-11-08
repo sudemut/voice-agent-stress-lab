@@ -6,6 +6,7 @@ class SimulationRunner():
         self.conversation_history = []
         self.termination_reason=None
         self.tool_call_history = []
+        self.error = None
 
     def start_simulation(self):
         if self.status != "PENDING":
@@ -32,9 +33,10 @@ class SimulationRunner():
             raise ValueError("Only a running simulation can  be completed")
         self.termination_reason = reason
         self.status= "COMPLETED"
-    def fail_simulation(self):
+    def fail_simulation(self, error=None):
         if self.status != "RUNNING":
             raise ValueError("Only a running simulation can  be failed")
+        self.error = error
         self.termination_reason = "ERROR"
         self.status = "FAILED"
 
@@ -45,4 +47,7 @@ class SimulationRunner():
         if not isinstance(tool_calls, list):
             raise ValueError("tool_calls must be a list")
 
-        self.tool_call_history.extend(tool_calls)
+        # Tag each call with the agent turn it belongs to, so the verifier
+        # can tell whether a claim was made before or after the tool ran.
+        for call in tool_calls:
+            self.tool_call_history.append({**call, "turn": self.current_turn})

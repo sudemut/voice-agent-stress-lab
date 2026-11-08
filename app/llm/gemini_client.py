@@ -4,13 +4,22 @@ from google import genai
 from google.genai import types
 from app.models.agent_result import AgentResult
 import json
-from app.tools.declarations import order_tools
+import logging
+import time
+
+logger = logging.getLogger(__name__)
 
 
 class GeminiClient(LLMClient):
-    def __init__(self, model_name, api_key):
+    def __init__(self, model_name, api_key, requests_per_minute=None):
         super().__init__(model_name)
         self.api_key = api_key
+        # Client-side pacing so batches stay under per-minute quotas
+        # (the free tier allows ~15 requests/minute) instead of hitting 429.
+        self.min_interval = (
+            60.0 / requests_per_minute if requests_per_minute else 0.0
+        )
+        self._last_request = None
         self.client = genai.Client(
         api_key=api_key,
         http_options=types.HttpOptions(
@@ -22,6 +31,14 @@ class GeminiClient(LLMClient):
             )
         )
     )
+    def _generate_content(self, **kwargs):
+        if self.min_interval and self._last_request is not None:
+            wait = self._last_request + self.min_interval - time.monotonic()
+            if wait > 0:
+                time.sleep(wait)
+        self._last_request = time.monotonic()
+        return self.client.models.generate_content(**kwargs)
+
     def _prepare_history(self, conversation_history):
         gemini_history = []
 
@@ -91,9 +108,9 @@ class GeminiClient(LLMClient):
             ]
         )
     )
-        print("[DEBUG] generate() called:", self.model_name)
+        logger.debug("generate() called: %s", self.model_name)
 
-        response = self.client.models.generate_content(
+        response = self._generate_content(
             model=self.model_name,
             contents=gemini_history,
             config=types.GenerateContentConfig(
@@ -106,9 +123,9 @@ class GeminiClient(LLMClient):
     def generate_structured(self, system_prompt, conversation_history):
 
         gemini_history = self._prepare_history(conversation_history)
-        print("[DEBUG] generate_structured() called:", self.model_name)
+        logger.debug("generate_structured() called: %s", self.model_name)
 
-        response = self.client.models.generate_content(
+        response = self._generate_content(
             model=self.model_name,
             contents=gemini_history,
             config=types.GenerateContentConfig(
@@ -167,9 +184,9 @@ class GeminiClient(LLMClient):
 
     def generate_with_tools(self,system_prompt,conversation_history,tools):
         gemini_history = self._prepare_history(conversation_history)
-        print("[DEBUG] generate_with_tools() called:", self.model_name)
+        logger.debug("generate_with_tools() called: %s", self.model_name)
 
-        response = self.client.models.generate_content(
+        response = self._generate_content(
             model=self.model_name,
             contents=gemini_history,
             config=types.GenerateContentConfig(
@@ -207,10 +224,10 @@ class GeminiClient(LLMClient):
                 parts=[function_response]
             )
         )
-        print("[DEBUG] generate_after_tool() called:", self.model_name)
+        logger.debug("generate_after_tool() called: %s", self.model_name)
 
 
-        response = self.client.models.generate_content(
+        response = self._generate_content(
             model=self.model_name,
             contents=gemini_history,
             config=types.GenerateContentConfig(
@@ -289,7 +306,7 @@ class GeminiClient(LLMClient):
             "additionalProperties": False
         }
 
-        response = self.client.models.generate_content(
+        response = self._generate_content(
             model=self.model_name,
             contents=evaluation_prompt,
             config=types.GenerateContentConfig(
@@ -328,7 +345,7 @@ class GeminiClient(LLMClient):
         gemini_history,
         tools
     ):
-        response = self.client.models.generate_content(
+        response = self._generate_content(
             model=self.model_name,
             contents=gemini_history,
             config=types.GenerateContentConfig(
